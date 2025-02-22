@@ -10,6 +10,7 @@ import { fetchErrorToast } from "@/components/toast";
 const ChatInterface = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [chats, setChats] = useState<Chat[]>([
     {
@@ -80,10 +81,12 @@ const ChatInterface = () => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const res = await languageDetector(inputText);
+    setLoading(true);
+    const res = await languageDetector(inputText, setLoading);
 
     if (!res) {
       fetchErrorToast("Failed to detect language.");
+      setLoading(false);
       return;
     }
     const newQuestion: Message = {
@@ -109,10 +112,13 @@ const ChatInterface = () => {
     );
 
     setInputText("");
+    setLoading(false);
   };
 
   const handleSummarizer = async (text: string, messageId: string) => {
-    const summary = (await summarize(text)) || "Summary not available.";
+    setLoading(true);
+    const summary =
+      (await summarize(text, setLoading)) || "Summary not available.";
 
     setChats((prev) =>
       prev.map((chat) => {
@@ -170,6 +176,7 @@ const ChatInterface = () => {
         return chat;
       })
     );
+    setLoading(false);
   };
 
   const currentChat = chats.find((chat) => chat.id === currentChatId);
@@ -226,6 +233,7 @@ const ChatInterface = () => {
                 }}
                 placeholder="Ask Me anything ...."
                 className="flex-1 outline-none px-2 min-h-20 pr-10 sm:pr-20 resize-none"
+                disabled={loading}
               />
             </div>
             <div className="text-xs text-gray-500 absolute bottom-2 left-2">
@@ -233,10 +241,32 @@ const ChatInterface = () => {
             </div>
             <button
               type="submit"
-              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-2 sm:right-10 cursor-pointer"
-              disabled={!inputText.trim()}
+              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-2 sm:right-10 cursor-pointer disabled:cursor-not-allowed"
+              disabled={!inputText.trim() || loading}
             >
-              <Send className="w-5 h-5" />
+              {loading ? (
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  ></path>
+                </svg>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </div>
         </form>

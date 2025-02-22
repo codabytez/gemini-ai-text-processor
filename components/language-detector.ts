@@ -6,7 +6,10 @@ declare const self: {
   };
 };
 
-export const languageDetector = async (text: string) => {
+export const languageDetector = async (
+  text: string,
+  setLoading: (loading: boolean) => void
+): Promise<DetectionResult[] | void> => {
   if (!text || typeof text !== "string") {
     fetchErrorToast("Invalid input text.");
     return;
@@ -18,6 +21,8 @@ export const languageDetector = async (text: string) => {
       message: "Language detection in progress...",
     });
 
+    setLoading(true);
+
     try {
       const languageDetectorCapabilities =
         await self.ai.languageDetector.capabilities();
@@ -25,23 +30,27 @@ export const languageDetector = async (text: string) => {
 
       if (canDetect === "no") {
         fetchErrorToast("Language detection is not supported.");
+        setLoading(false);
         return;
       }
 
+      let res: DetectionResult[];
       if (canDetect === "readily") {
-        const res = await detectLanguage(text);
-        return res;
+        res = await detectLanguage(text);
       } else {
-        const res = await downloadAndUseLanguageDetector(text);
-        return res;
+        res = await downloadAndUseLanguageDetector(text);
       }
+      setLoading(false);
+      return res;
     } catch (error) {
       fetchErrorToast("Failed to detect language.");
       console.error("Failed to detect language:", error);
+      setLoading(false);
       throw error;
     }
   } else {
     fetchErrorToast("Language Detector API is not available.");
+    setLoading(false);
   }
 };
 

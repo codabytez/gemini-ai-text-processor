@@ -11,7 +11,8 @@ declare const self: {
 
 export const translator = async (
   language: string,
-  text: string
+  text: string,
+  setLoading: (loading: boolean) => void
 ): Promise<string | void> => {
   if (!text || typeof text !== "string") {
     fetchErrorToast("Invalid input text.");
@@ -24,6 +25,8 @@ export const translator = async (
       message: "Translation in progress...",
     });
 
+    setLoading(true);
+
     try {
       const translatorCapabilities = await self.ai.translator.capabilities();
       const available = translatorCapabilities.languagePairAvailable(
@@ -35,6 +38,7 @@ export const translator = async (
         fetchErrorToast(
           "Translation is not supported for the given language pair."
         );
+        setLoading(false);
         return;
       }
 
@@ -58,11 +62,12 @@ export const translator = async (
       }
 
       const translated = await translator.translate(text);
-      console.log(translated);
+      setLoading(false);
       return translated;
     } catch (error) {
       fetchErrorToast("Failed to translate text.");
       console.error("Failed to translate text:", error);
+      setLoading(false);
     }
   } else {
     fetchErrorToast("Translation API is not available.");

@@ -9,7 +9,10 @@ declare const self: {
   };
 };
 
-export const summarize = async (text: string): Promise<string | void> => {
+export const summarize = async (
+  text: string,
+  setLoading: (loading: boolean) => void
+): Promise<string | void> => {
   if (!text || typeof text !== "string") {
     fetchErrorToast("Invalid input text.");
     return;
@@ -28,6 +31,8 @@ export const summarize = async (text: string): Promise<string | void> => {
       message: "Summarization in progress...",
     });
 
+    setLoading(true);
+
     try {
       const capabilities = await self.ai.summarizer.capabilities();
       const available = capabilities.available;
@@ -36,6 +41,7 @@ export const summarize = async (text: string): Promise<string | void> => {
         fetchErrorToast(
           "The Summarization API is available, but your device is unable to run it. Check device requirements in chrome Early Preview Program documentation."
         );
+        setLoading(false);
         return;
       }
 
@@ -45,6 +51,7 @@ export const summarize = async (text: string): Promise<string | void> => {
         const summary = await summarizer.summarize(text, {
           context: "This article is intended for a tech-savvy audience.",
         });
+        setLoading(false);
         return summary;
       } else {
         summarizer = await self.ai.summarizer.create(options);
@@ -60,13 +67,16 @@ export const summarize = async (text: string): Promise<string | void> => {
         const summary = await summarizer.summarize(text, {
           context: "This article is intended for a tech-savvy audience.",
         });
+        setLoading(false);
         return summary;
       }
     } catch (error) {
       fetchErrorToast("Failed to summarize text.");
       console.error("Failed to summarize text:", error);
+      setLoading(false);
     }
   } else {
     fetchErrorToast("Summarization API is not available.");
+    setLoading(false);
   }
 };
