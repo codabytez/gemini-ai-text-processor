@@ -81,7 +81,10 @@ const ChatInterface = () => {
 
     const res = await languageDetector(inputText);
 
-    if (!res) return;
+    if (!res) {
+      console.error("Failed to detect language.");
+      return;
+    }
     const newQuestion: Message = {
       id: Date.now().toString(),
       type: "question",
@@ -182,7 +185,7 @@ const ChatInterface = () => {
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 flex flex-col-reverse"
       >
-        <div className="flex flex-col space-y-12">
+        <div className="flex flex-col space-y-12 w-full">
           {currentChat?.messages.map((message) => (
             <React.Fragment key={message.id}>
               {message.type === "question" ? (
@@ -194,10 +197,7 @@ const ChatInterface = () => {
                 </div>
               ) : (
                 <div className="w-max">
-                  <Response
-                    {...message}
-                    onSummarize={(text) => handleSummarizer(text, message.id)}
-                  />
+                  <Response {...message} />
                 </div>
               )}
             </React.Fragment>
@@ -206,8 +206,8 @@ const ChatInterface = () => {
       </div>
 
       {/* Input Area */}
-      <div className="pt-4 pb-[2px] px-[1px] bg-[#d5dae7] m-6 rounded-2xl overflow-hidden">
-        <div className="h-11 bg-transparent" />
+      <div className="pt-4 pb-[2px] px-[1px] bg-[#d5dae7] sm:m-6 mb-10 rounded-2xl overflow-hidden">
+        <div className="h-11 bg-transparent hidden sm:block" />
         <form
           onSubmit={handleSubmit}
           className="relative bg-white rounded-b-2xl overflow-hidden"
@@ -217,13 +217,22 @@ const ChatInterface = () => {
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e as unknown as FormEvent);
+                  }
+                }}
                 placeholder="Ask Me anything ...."
-                className="flex-1 outline-none px-2 min-h-20 pr-20 resize-none"
+                className="flex-1 outline-none px-2 min-h-20 pr-10 sm:pr-20 resize-none"
               />
+            </div>
+            <div className="text-xs text-gray-500 absolute bottom-2 left-2">
+              Press Enter to send, Shift+Enter for new line
             </div>
             <button
               type="submit"
-              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-10 cursor-pointer"
+              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-2 sm:right-10 cursor-pointer"
               disabled={!inputText.trim()}
             >
               <Send className="w-5 h-5" />
