@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NextPage } from "next";
 import { Copy, FileText } from "lucide-react";
 import { translator } from "@/components/translator";
+import { toastify } from "./toast";
 
 interface UserChatProps extends Message {
   onSummarize: (text: string) => void;
@@ -27,7 +28,10 @@ const UserChat: NextPage<UserChatProps> = ({
   const handleTranslate = async (lang: string, text: string) => {
     setLoading(true);
     if (language !== "en") {
-      console.log("Language is not English.");
+      toastify({
+        type: "error",
+        message: "Language is not English.",
+      });
       setLoading(false);
       return;
     }
@@ -40,11 +44,17 @@ const UserChat: NextPage<UserChatProps> = ({
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        console.log("Text copied to clipboard!");
-        // NOTE: replace this with a toast notification for better UX
+        toastify({
+          type: "success",
+          message: "Text copied to clipboard!",
+        });
       })
       .catch((err) => {
-        console.error("Failed to copy text: ", err);
+        toastify({
+          type: "error",
+          message: "Failed to copy text",
+        });
+        throw err;
       });
   };
 

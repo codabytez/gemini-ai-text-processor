@@ -3,6 +3,7 @@ import { NextPage } from "next";
 import { Copy } from "lucide-react";
 import { translator } from "./translator";
 import { languageDetector } from "./language-detector";
+import { toastify } from "./toast";
 
 const Response: NextPage<Message> = ({ text, timestamp }) => {
   const [translatedText, setTranslatedText] = useState<string>("");
@@ -21,13 +22,19 @@ const Response: NextPage<Message> = ({ text, timestamp }) => {
     const res = await languageDetector(text, setLoading);
 
     if (!res) {
-      console.error("Failed to detect language.");
+      toastify({
+        type: "error",
+        message: "Failed to detect language.",
+      });
       setLoading(false);
       return;
     }
 
     if (res && res[0].detectedLanguage !== "en") {
-      console.log("Language is not English.");
+      toastify({
+        type: "error",
+        message: "Language is not English.",
+      });
       setLoading(false);
       return;
     }
@@ -40,11 +47,17 @@ const Response: NextPage<Message> = ({ text, timestamp }) => {
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        console.log("Text copied to clipboard!");
-        // NOTE: replace this with a toast notification for better UX
+        toastify({
+          type: "success",
+          message: "Text copied to clipboard!",
+        });
       })
       .catch((err) => {
-        console.error("Failed to copy text: ", err);
+        toastify({
+          type: "error",
+          message: "Failed to copy text",
+        });
+        throw err;
       });
   };
 
