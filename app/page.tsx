@@ -1,101 +1,244 @@
-import Image from "next/image";
+"use client";
+import React, { useState, FormEvent, useRef, useEffect } from "react";
+import { Send } from "lucide-react";
+import UserChat from "@/components/user-chat";
+import Response from "@/components/response";
+import { summarize } from "@/components/summarizer";
+import { languageDetector } from "@/components/language-detector";
 
-export default function Home() {
+const ChatInterface = () => {
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [inputText, setInputText] = useState("");
+
+  const [chats, setChats] = useState<Chat[]>(() => {
+    if (typeof window !== "undefined") {
+      const savedChats = localStorage.getItem("chats");
+      return savedChats
+        ? JSON.parse(savedChats)
+        : [
+            {
+              id: "1",
+              title: "New Chat",
+              messages: [],
+              createdAt: new Date().toISOString(),
+            },
+          ];
+    }
+  });
+
+  const [currentChatId, setCurrentChatId] = useState<string>(() => {
+    return chats[0]?.id || "";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("chats", JSON.stringify(chats));
+  }, [chats]);
+
+  // Function to maintain scroll position when new messages are added
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const currentScroll = container.scrollTop;
+      const newHeight = container.scrollHeight;
+      const previousHeight = container.dataset.previousHeight
+        ? parseInt(container.dataset.previousHeight)
+        : 0;
+      const heightDifference = newHeight - previousHeight;
+
+      // Only adjust scroll if we're adding new content
+      if (heightDifference > 0) {
+        container.scrollTop = currentScroll + heightDifference;
+      }
+
+      // Store the new height for future comparison
+      container.dataset.previousHeight = newHeight.toString();
+    }
+  }, [chats]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chats]);
+
+  // Create a new chat
+  const createNewChat = () => {
+    const newChat: Chat = {
+      id: Date.now().toString(),
+      title: "New Chat",
+      messages: [],
+      createdAt: new Date().toISOString(),
+    };
+    setChats((prev) => [...prev, newChat]);
+    setCurrentChatId(newChat.id);
+  };
+
+  // Switch between chats
+  const switchChat = (chatId: string) => {
+    setCurrentChatId(chatId);
+  };
+
+  // Handle message submission
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    const res = await languageDetector(inputText);
+    console.log("res", res[0]);
+
+    const newQuestion: Message = {
+      id: Date.now().toString(),
+      type: "question",
+      text: inputText,
+      timestamp: new Date().toISOString(),
+      language: res[0].detectedLanguage,
+    };
+
+    // const newAnswer: Message = {
+    //   id: (Date.now() + 1).toString(),
+    //   type: "answer",
+    //   text: `Here is the response to: ${inputText}`,
+    //   timestamp: new Date().toISOString(),
+    // };
+
+    setChats((prev) =>
+      prev.map((chat) => {
+        if (chat.id === currentChatId) {
+          return {
+            ...chat,
+            messages: [...chat.messages, newQuestion],
+            title:
+              chat.messages.length === 0 ? inputText.slice(0, 30) : chat.title,
+          };
+        }
+        return chat;
+      })
+    );
+
+    setInputText("");
+  };
+
+  const handleSummarizer = async (text: string, messageId: string) => {
+    const summary = await summarize(text);
+
+    setChats((prev) =>
+      prev.map((chat) => {
+        if (chat.id === currentChatId) {
+          // Find the index of the message that was summarized
+          const messageIndex = chat.messages.findIndex(
+            (msg) => msg.id === messageId
+          );
+
+          if (messageIndex !== -1) {
+            // Check if there's already a summary response after this message
+            const nextMessage = chat.messages[messageIndex + 1];
+            const hasSummary = nextMessage && nextMessage.type === "answer";
+
+            if (hasSummary) {
+              // Update existing summary
+              const updatedMessages = chat.messages.map((msg, index) => {
+                if (index === messageIndex + 1) {
+                  return {
+                    ...msg,
+                    text: summary,
+                    timestamp: new Date().toISOString(),
+                  };
+                }
+                return msg;
+              });
+
+              return {
+                ...chat,
+                messages: updatedMessages,
+              };
+            } else {
+              // Create new summary if none exists
+              const summaryResponse: Message = {
+                id: Date.now().toString(),
+                type: "answer",
+                text: summary,
+                timestamp: new Date().toISOString(),
+              };
+
+              // Insert new summary after the original message
+              const newMessages = [
+                ...chat.messages.slice(0, messageIndex + 1),
+                summaryResponse,
+                ...chat.messages.slice(messageIndex + 1),
+              ];
+
+              return {
+                ...chat,
+                messages: newMessages,
+              };
+            }
+          }
+        }
+        return chat;
+      })
+    );
+  };
+
+  const currentChat = chats.find((chat) => chat.id === currentChatId);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex flex-col bg-white max-w-5xl mx-auto rounded-3xl overflow-hidden w-full h-screen">
+      {/* Header */}
+      <div className="p-4 border-b">
+        <h1 className="text-xl font-semibold">Design Thinking</h1>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Messages Area */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 flex flex-col-reverse"
+      >
+        <div className="flex flex-col space-y-12">
+          {currentChat?.messages.map((message) => (
+            <React.Fragment key={message.id}>
+              {message.type === "question" ? (
+                <div className="justify-items-end">
+                  <UserChat
+                    {...message}
+                    onSummarize={(text) => handleSummarizer(text, message.id)}
+                  />
+                </div>
+              ) : (
+                <div className="w-max">
+                  <Response {...message} />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </div>
+
+      {/* Input Area */}
+      <div className="pt-4 pb-[2px] px-[1px] bg-[#d5dae7] m-6 rounded-2xl overflow-hidden">
+        <div className="h-11 bg-transparent" />
+        <form
+          onSubmit={handleSubmit}
+          className="relative bg-white rounded-b-2xl overflow-hidden"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <div className="flex gap-2 justify-center items-center rounded-3xl">
+            <div className="flex-1 bg-white rounded-xl flex items-center relative">
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Ask Me anything ...."
+                className="flex-1 outline-none px-2 min-h-20 pr-20 resize-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-10 cursor-pointer"
+              disabled={!inputText.trim()}
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
-}
+};
+
+export default ChatInterface;
