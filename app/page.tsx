@@ -10,21 +10,23 @@ const ChatInterface = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
 
-  const [chats, setChats] = useState<Chat[]>(() => {
+  const [chats, setChats] = useState<Chat[]>([
+    {
+      id: "1",
+      title: "New Chat",
+      messages: [],
+      createdAt: new Date().toISOString(),
+    },
+  ]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const savedChats = localStorage.getItem("chats");
-      return savedChats
-        ? JSON.parse(savedChats)
-        : [
-            {
-              id: "1",
-              title: "New Chat",
-              messages: [],
-              createdAt: new Date().toISOString(),
-            },
-          ];
+      if (savedChats) {
+        setChats(JSON.parse(savedChats));
+      }
     }
-  });
+  }, []);
 
   const [currentChatId] = useState<string>(() => {
     return chats[0]?.id || "";
@@ -87,13 +89,6 @@ const ChatInterface = () => {
       timestamp: new Date().toISOString(),
       language: res[0].detectedLanguage,
     };
-
-    // const newAnswer: Message = {
-    //   id: (Date.now() + 1).toString(),
-    //   type: "answer",
-    //   text: `Here is the response to: ${inputText}`,
-    //   timestamp: new Date().toISOString(),
-    // };
 
     setChats((prev) =>
       prev.map((chat) => {
