@@ -13,7 +13,8 @@ const UserChat: NextPage<UserChatProps> = ({
   language,
   onSummarize,
 }) => {
-  const [translatedText, setTranslatedText] = useState("");
+  const [translatedText, setTranslatedText] = useState<string>("");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -24,8 +25,7 @@ const UserChat: NextPage<UserChatProps> = ({
 
   const handleTranslate = async (language: string, text: string) => {
     const translation = await translator(language, text);
-    setTranslatedText(translation);
-    console.log("fr", translation);
+    setTranslatedText(translation as string);
   };
 
   const handleCopy = (text: string) => {
@@ -33,7 +33,7 @@ const UserChat: NextPage<UserChatProps> = ({
       .writeText(text)
       .then(() => {
         console.log("Text copied to clipboard!");
-        // You can replace this with a toast notification for better UX
+        // NOTE: replace this with a toast notification for better UX
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);
@@ -59,7 +59,7 @@ const UserChat: NextPage<UserChatProps> = ({
         </span>
       </div>
 
-      {translatedText.length > 0 && (
+      {translatedText && translatedText.length > 0 && (
         <div className="mt-3 pl-4 border-l-2 border-[#7d7d7d] text-black/40">
           <p className="text-sm">{translatedText}</p>
         </div>
@@ -81,13 +81,27 @@ const UserChat: NextPage<UserChatProps> = ({
           <Copy className="w-4 h-4" />
           Copy
         </button>
-        <button
-          className="flex items-center gap-1 px-3 py-1 bg-white rounded-xl text-sm text-[#07090D] border border-[#d3d4d5] w-max"
-          onClick={() => handleTranslate("fr", text)}
-        >
-          <Pencil className="w-4 h-4" />
-          Translate
-        </button>
+        <div className="flex items-center gap-2">
+          <select
+            className="px-3 py-1 bg-white rounded-xl text-sm text-[#07090D] border border-[#d3d4d5]"
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+          >
+            <option value="en">English (en)</option>
+            <option value="pt">Portuguese (pt)</option>
+            <option value="es">Spanish (es)</option>
+            <option value="ru">Russian (ru)</option>
+            <option value="tr">Turkish (tr)</option>
+            <option value="fr">French (fr)</option>
+          </select>
+          <button
+            className="flex items-center gap-1 px-3 py-1 bg-white rounded-xl text-sm text-[#07090D] border border-[#d3d4d5] w-max"
+            onClick={() => handleTranslate(selectedLanguage, text)}
+          >
+            <Pencil className="w-4 h-4" />
+            Translate
+          </button>
+        </div>
       </div>
     </div>
   );

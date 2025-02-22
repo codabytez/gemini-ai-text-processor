@@ -26,7 +26,7 @@ const ChatInterface = () => {
     }
   });
 
-  const [currentChatId, setCurrentChatId] = useState<string>(() => {
+  const [currentChatId] = useState<string>(() => {
     return chats[0]?.id || "";
   });
 
@@ -55,26 +55,22 @@ const ChatInterface = () => {
     }
   }, [chats]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [chats]);
+  //NOTE: Create a new chat
+  // const createNewChat = () => {
+  //   const newChat: Chat = {
+  //     id: Date.now().toString(),
+  //     title: "New Chat",
+  //     messages: [],
+  //     createdAt: new Date().toISOString(),
+  //   };
+  //   setChats((prev) => [...prev, newChat]);
+  //   setCurrentChatId(newChat.id);
+  // };
 
-  // Create a new chat
-  const createNewChat = () => {
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      title: "New Chat",
-      messages: [],
-      createdAt: new Date().toISOString(),
-    };
-    setChats((prev) => [...prev, newChat]);
-    setCurrentChatId(newChat.id);
-  };
-
-  // Switch between chats
-  const switchChat = (chatId: string) => {
-    setCurrentChatId(chatId);
-  };
+  // // Switch between chats
+  // const switchChat = (chatId: string) => {
+  //   setCurrentChatId(chatId);
+  // };
 
   // Handle message submission
   const handleSubmit = async (e: FormEvent) => {
@@ -82,8 +78,8 @@ const ChatInterface = () => {
     if (!inputText.trim()) return;
 
     const res = await languageDetector(inputText);
-    console.log("res", res[0]);
 
+    if (!res) return;
     const newQuestion: Message = {
       id: Date.now().toString(),
       type: "question",
@@ -117,7 +113,7 @@ const ChatInterface = () => {
   };
 
   const handleSummarizer = async (text: string, messageId: string) => {
-    const summary = await summarize(text);
+    const summary = (await summarize(text)) || "Summary not available.";
 
     setChats((prev) =>
       prev.map((chat) => {
@@ -183,7 +179,7 @@ const ChatInterface = () => {
     <div className="flex flex-col bg-white max-w-5xl mx-auto rounded-3xl overflow-hidden w-full h-screen">
       {/* Header */}
       <div className="p-4 border-b">
-        <h1 className="text-xl font-semibold">Design Thinking</h1>
+        <h1 className="text-xl font-semibold">Text Processor</h1>
       </div>
 
       {/* Messages Area */}
@@ -203,7 +199,10 @@ const ChatInterface = () => {
                 </div>
               ) : (
                 <div className="w-max">
-                  <Response {...message} />
+                  <Response
+                    {...message}
+                    onSummarize={(text) => handleSummarizer(text, message.id)}
+                  />
                 </div>
               )}
             </React.Fragment>
