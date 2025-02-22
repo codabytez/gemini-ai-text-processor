@@ -18,12 +18,15 @@ export const summarize = async (
     return;
   }
 
-  const options: SummarizerOptions = {
-    sharedContext: "This is a scientific article", // Additional shared context that can help the summarizer
-    type: "key-points", // key-points (default), tl;dr, teaser, and headline
-    format: "markdown", // markdown (default), and plain-text
-    length: "short", // short, medium (default), and long
-  };
+  const savedOptions = localStorage.getItem("summarizerOptions");
+  const options: SummarizerOptions = savedOptions
+    ? JSON.parse(savedOptions)
+    : {
+        sharedContext: "This is a scientific article",
+        type: "key-points",
+        format: "markdown",
+        length: "short",
+      };
 
   if ("ai" in self && "summarizer" in self.ai) {
     toastify({

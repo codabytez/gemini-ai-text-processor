@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, FormEvent, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, Plus, Trash, Settings, Menu } from "lucide-react";
 import UserChat from "@/components/user-chat";
 import Response from "@/components/response";
 import { summarize } from "@/components/summarizer";
@@ -11,6 +11,16 @@ const ChatInterface = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [chatMenuIsOpen, setChatMenuIsOpen] = useState<boolean>(false);
+  const [summarizerOptions, setSummarizerOptions] = useState<SummarizerOptions>(
+    {
+      sharedContext: "This is a scientific article",
+      type: "key-points",
+      format: "markdown",
+      length: "short",
+    }
+  );
 
   const [chats, setChats] = useState<Chat[]>([
     {
@@ -24,19 +34,30 @@ const ChatInterface = () => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedChats = localStorage.getItem("chats");
+      const savedOptions = localStorage.getItem("summarizerOptions");
       if (savedChats) {
         setChats(JSON.parse(savedChats));
+      }
+      if (savedOptions) {
+        setSummarizerOptions(JSON.parse(savedOptions));
       }
     }
   }, []);
 
-  const [currentChatId] = useState<string>(() => {
+  const [currentChatId, setCurrentChatId] = useState<string>(() => {
     return chats[0]?.id || "";
   });
 
   useEffect(() => {
     localStorage.setItem("chats", JSON.stringify(chats));
   }, [chats]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "summarizerOptions",
+      JSON.stringify(summarizerOptions)
+    );
+  }, [summarizerOptions]);
 
   // Function to maintain scroll position when new messages are added
   useEffect(() => {
@@ -59,24 +80,24 @@ const ChatInterface = () => {
     }
   }, [chats]);
 
-  //NOTE: Create a new chat
-  // const createNewChat = () => {
-  //   const newChat: Chat = {
-  //     id: Date.now().toString(),
-  //     title: "New Chat",
-  //     messages: [],
-  //     createdAt: new Date().toISOString(),
-  //   };
-  //   setChats((prev) => [...prev, newChat]);
-  //   setCurrentChatId(newChat.id);
-  // };
+  const createNewChat = () => {
+    const newChat: Chat = {
+      id: Date.now().toString(),
+      title: "New Chat",
+      messages: [],
+      createdAt: new Date().toISOString(),
+    };
+    setChats((prev) => [...prev, newChat]);
+    setCurrentChatId(newChat.id);
+  };
 
-  // // Switch between chats
-  // const switchChat = (chatId: string) => {
-  //   setCurrentChatId(chatId);
-  // };
+  const deleteChat = (chatId: string) => {
+    setChats((prev) => prev.filter((chat) => chat.id !== chatId));
+    if (currentChatId === chatId && chats.length > 1) {
+      setCurrentChatId(chats[0].id);
+    }
+  };
 
-  // Handle message submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -182,34 +203,96 @@ const ChatInterface = () => {
   const currentChat = chats.find((chat) => chat.id === currentChatId);
 
   return (
-    <div className="flex flex-col bg-white max-w-5xl mx-auto rounded-3xl overflow-hidden w-full h-screen">
+    <div className="flex flex-col bg-white max-w-5xl mx-auto rounded-3xl overflow-hidden w-full h-screen relative">
       {/* Header */}
-      <div className="p-4 border-b">
-        <h1 className="text-xl font-semibold">Text Processor</h1>
+      <div className="p-4 border-b flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <button
+            className="md:hidden flex items-center gap-1 px-3 py-1 bg-gray-200 rounded-xl text-sm text-[#07090d] border border-[#cdcecf] w-max transition-transform transform hover:scale-105 relative z-20"
+            onClick={() => setChatMenuIsOpen(!chatMenuIsOpen)}
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <h1 className="text-xl font-semibold">Text Processor</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="flex items-center gap-1 px-3 py-1 bg-gray-200 rounded-xl text-sm text-[#07090d] border border-[#cdcecf] w-max transition-transform transform hover:scale-105"
+            onClick={createNewChat}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden md:inline-block">New Chat</span>
+          </button>
+          <button
+            className="flex items-center gap-1 px-3 py-1 bg-gray-200 rounded-xl text-sm text-[#07090d] border border-[#cdcecf] w-max transition-transform transform hover:scale-105"
+            onClick={() => setSettingsOpen(!settingsOpen)}
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden md:inline-block">Settings</span>
+          </button>
+        </div>
       </div>
 
-      {/* Messages Area */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 flex flex-col-reverse"
-      >
-        <div className="flex flex-col space-y-12 w-full">
-          {currentChat?.messages.map((message) => (
-            <React.Fragment key={message.id}>
-              {message.type === "question" ? (
-                <div className="justify-items-end">
-                  <UserChat
-                    {...message}
-                    onSummarize={(text) => handleSummarizer(text, message.id)}
-                  />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Chat List */}
+        <div
+          className={`absolute inset-y-0 left-0 bg-gray-100 p-4 overflow-y-auto transition-transform transform ${
+            chatMenuIsOpen ? "translate-x-0" : "-translate-x-full"
+          } w-[200px] md:relative md:translate-x-0 md:w-1/4 z-10`}
+        >
+          <h2 className="text-lg font-semibold mb-4">Chats</h2>
+          <ul className="space-y-2">
+            {chats.map((chat) => (
+              <li
+                key={chat.id}
+                className={`p-2 rounded-lg cursor-pointer transition-colors duration-300 ${
+                  chat.id === currentChatId ? "bg-gray-300" : "bg-white"
+                }`}
+                onClick={() => {
+                  setCurrentChatId(chat.id);
+                  setChatMenuIsOpen(false);
+                }}
+              >
+                <div className="flex justify-between items-center">
+                  <span>{chat.title}</span>
+                  <button
+                    className="text-red-500 transition-transform transform hover:scale-110"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteChat(chat.id);
+                    }}
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
                 </div>
-              ) : (
-                <div className="w-max">
-                  <Response {...message} />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Messages Area */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 flex flex-col-reverse transition-all duration-300 ease-in-out"
+        >
+          <div className="flex flex-col space-y-12 w-full">
+            {currentChat?.messages.map((message) => (
+              <React.Fragment key={message.id}>
+                {message.type === "question" ? (
+                  <div className="justify-items-end">
+                    <UserChat
+                      {...message}
+                      onSummarize={(text) => handleSummarizer(text, message.id)}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-max">
+                    <Response {...message} />
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -241,7 +324,7 @@ const ChatInterface = () => {
             </div>
             <button
               type="submit"
-              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-2 sm:right-10 cursor-pointer disabled:cursor-not-allowed"
+              className="p-3 bg-gray-200 rounded-xl hover:bg-gray-300 absolute right-2 sm:right-10 cursor-pointer disabled:cursor-not-allowed transition-transform transform hover:scale-105"
               disabled={!inputText.trim() || loading}
             >
               {loading ? (
@@ -271,6 +354,96 @@ const ChatInterface = () => {
           </div>
         </form>
       </div>
+
+      {/* Settings Drawer */}
+      {settingsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end transition-opacity duration-300 ease-in-out">
+          <div className="bg-white w-80 p-4 transition-transform transform translate-x-0">
+            <h2 className="text-lg font-semibold mb-4">Settings</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Shared Context
+                </label>
+                <input
+                  type="text"
+                  value={summarizerOptions.sharedContext}
+                  onChange={(e) =>
+                    setSummarizerOptions((prev) => ({
+                      ...prev,
+                      sharedContext: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Type
+                </label>
+                <select
+                  value={summarizerOptions.type}
+                  onChange={(e) =>
+                    setSummarizerOptions((prev) => ({
+                      ...prev,
+                      type: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="key-points">Key Points</option>
+                  <option value="tl;dr">TL;DR</option>
+                  <option value="teaser">Teaser</option>
+                  <option value="headline">Headline</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Format
+                </label>
+                <select
+                  value={summarizerOptions.format}
+                  onChange={(e) =>
+                    setSummarizerOptions((prev) => ({
+                      ...prev,
+                      format: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="markdown">Markdown</option>
+                  <option value="plain-text">Plain Text</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Length
+                </label>
+                <select
+                  value={summarizerOptions.length}
+                  onChange={(e) =>
+                    setSummarizerOptions((prev) => ({
+                      ...prev,
+                      length: e.target.value,
+                    }))
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="short">Short</option>
+                  <option value="medium">Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </div>
+            </div>
+            <button
+              className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-md transition-transform transform hover:scale-105"
+              onClick={() => setSettingsOpen(false)}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
