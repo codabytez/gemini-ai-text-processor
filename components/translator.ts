@@ -1,16 +1,4 @@
-interface TranslatorCapabilities {
-  languagePairAvailable: (source: string, target: string) => string;
-}
-
-interface Translator {
-  translate: (text: string) => Promise<string>;
-}
-
-interface TranslatorOptions {
-  sourceLanguage: string;
-  targetLanguage: string | { language: string };
-  monitor?: (m: ProgressEvent<EventTarget>) => void;
-}
+import { fetchErrorToast, toastify } from "./toast";
 
 declare const self: {
   ai: {
@@ -26,22 +14,25 @@ export const translator = async (
   text: string
 ): Promise<string | void> => {
   if (!text || typeof text !== "string") {
-    console.error("Invalid input text.");
+    fetchErrorToast("Invalid input text.");
     return;
   }
 
   if ("ai" in self && "translator" in self.ai) {
-    console.log("Translator API is supported.");
+    toastify({
+      type: "info",
+      message: "Translation in progress...",
+    });
 
     try {
       const translatorCapabilities = await self.ai.translator.capabilities();
       const available = translatorCapabilities.languagePairAvailable(
-        "es",
-        "fr"
+        "en",
+        language
       );
 
       if (available === "no") {
-        console.error(
+        fetchErrorToast(
           "Translation is not supported for the given language pair."
         );
         return;
@@ -70,9 +61,10 @@ export const translator = async (
       console.log(translated);
       return translated;
     } catch (error) {
+      fetchErrorToast("Failed to translate text.");
       console.error("Failed to translate text:", error);
     }
   } else {
-    console.error("Translator API is not supported.");
+    fetchErrorToast("Translation API is not available.");
   }
 };

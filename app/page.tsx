@@ -5,6 +5,7 @@ import UserChat from "@/components/user-chat";
 import Response from "@/components/response";
 import { summarize } from "@/components/summarizer";
 import { languageDetector } from "@/components/language-detector";
+import { fetchErrorToast } from "@/components/toast";
 
 const ChatInterface = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -82,7 +83,7 @@ const ChatInterface = () => {
     const res = await languageDetector(inputText);
 
     if (!res) {
-      console.error("Failed to detect language.");
+      fetchErrorToast("Failed to detect language.");
       return;
     }
     const newQuestion: Message = {
